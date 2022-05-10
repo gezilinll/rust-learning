@@ -18,7 +18,8 @@ pub mod snake_mod {
 
     #[derive(Component)]
     struct SnakeHead {
-        direction: Direction,
+        target_direction: Direction,
+        moving_direction: Direction,
     }
 
     #[derive(Component)]
@@ -87,7 +88,7 @@ pub mod snake_mod {
             .add_system_set(
                 SystemSet::new()
                     .with_run_criteria(FixedTimestep::step(1.0))
-                    .with_system(food_spawner),
+                    .with_system(food_spawner.after(snake_movement)),
             )
             // fn 上的 before 等接口属于扩展实现的，方式详见：https://users.rust-lang.org/t/solved-implementing-a-trait-for-function-closure-types/9371
             // 孤儿规则：当你为某类型实现某 trait 的时候，必须要求类型或者 trait 至少有一个是在当前 crate 中定义的。你不能为第三方的类型实现第三方的 trait
@@ -132,7 +133,8 @@ pub mod snake_mod {
                     ..default()
                 })
                 .insert(SnakeHead {
-                    direction: Direction::Up,
+                    target_direction: Direction::Up,
+                    moving_direction: Direction::Up,
                 })
                 .insert(SnakeSegment)
                 .insert(Position { x: 3, y: 3 })
@@ -157,25 +159,42 @@ pub mod snake_mod {
             .id()
     }
 
-    fn food_spawner(mut commands: Commands) {
-        commands
-            .spawn_bundle(SpriteBundle {
-                sprite: Sprite {
-                    color: FOOD_COLOR,
-                    ..default()
-                },
-                ..default()
-            })
-            .insert(Food)
-            .insert(Position {
+    fn food_spawner(
+        mut commands: Commands,
+        segments: ResMut<SnakeSegments>,
+        mut positions: Query<&mut Position>,
+    ) {
+        let segment_positions = segments
+            .iter()
+            .map(|e| *positions.get_mut(*e).unwrap())
+            .collect::<Vec<Position>>();
+        loop {
+            let random_position = Position {
                 x: (random::<f32>() * ARENA_WIDTH as f32) as i32,
-                y: (random::<f32>() * ARENA_HEIGHT as f32) as i32,
-            })
-            .insert(Size::square(0.8));
+                y: (random::<f32>() * ARENA_WIDTH as f32) as i32,
+            };
+            if !segment_positions.contains(&random_position) {
+                commands
+                    .spawn_bundle(SpriteBundle {
+                        sprite: Sprite {
+                            color: FOOD_COLOR,
+                            ..default()
+                        },
+                        ..default()
+                    })
+                    .insert(Food)
+                    .insert(random_position)
+                    .insert(Size::square(0.8));
+                break;
+            }
+        }
     }
 
     fn snake_movement_input(keyboard_input: Res<Input<KeyCode>>, mut heads: Query<&mut SnakeHead>) {
         if let Some(mut head) = heads.iter_mut().next() {
+            if head.moving_direction != head.target_direction {
+                return;
+            }
             let dir: Direction = if keyboard_input.pressed(KeyCode::Left)
                 || keyboard_input.pressed(KeyCode::A)
             {
@@ -187,10 +206,10 @@ pub mod snake_mod {
             } else if keyboard_input.pressed(KeyCode::Up) || keyboard_input.pressed(KeyCode::W) {
                 Direction::Up
             } else {
-                head.direction
+                head.moving_direction
             };
-            if dir != head.direction.opposite() {
-                head.direction = dir;
+            if dir != head.moving_direction.opposite() && dir != head.target_direction.opposite() {
+                head.target_direction = dir;
             }
         }
     }
@@ -206,16 +225,17 @@ pub mod snake_mod {
         mut last_tail_position: ResMut<LastTailPosition>,
         mut game_over_writer: EventWriter<GameOverEvent>,
         segments: ResMut<SnakeSegments>,
-        mut heads: Query<(Entity, &SnakeHead)>,
+        mut heads: Query<(Entity, &mut SnakeHead)>,
         mut positions: Query<&mut Position>,
     ) {
-        if let Some((head_entity, head)) = heads.iter_mut().next() {
+        if let Some((head_entity, mut head)) = heads.iter_mut().next() {
             let segment_positions = segments
                 .iter()
                 .map(|e| *positions.get_mut(*e).unwrap())
                 .collect::<Vec<Position>>();
             let mut head_pos = positions.get_mut(head_entity).unwrap();
-            match &head.direction {
+            head.moving_direction = head.target_direction;
+            match &head.moving_direction {
                 Direction::Left => {
                     head_pos.x -= 1;
                 }
