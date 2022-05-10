@@ -15,17 +15,19 @@ pub mod snake_mod {
     const SNAKE_HEAD_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
     const SNAKE_SEGMENT_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
     const FOOD_COLOR: Color = Color::rgb(1.0, 0.0, 1.0);
+    static mut SNAKE_SCORE: i32 = 0;
 
     #[derive(Component)]
     struct SnakeHead {
         target_direction: Direction,
         moving_direction: Direction,
     }
-
     #[derive(Component)]
     struct SnakeSegment;
     #[derive(Default, Deref, DerefMut)]
     struct SnakeSegments(Vec<Entity>);
+    #[derive(Component)]
+    struct ScoreText;
 
     #[derive(Component)]
     struct Food;
@@ -84,11 +86,13 @@ pub mod snake_mod {
             })
             .add_startup_system(setup_camera)
             .add_startup_system(spawn_snake)
-            // 每秒加一个 Food
-            .add_system_set(
+            .add_startup_system(setup_score_text)
+            // 每秒加一个 Food，放最后环节渲染，否则目前 Demo 会概率性出现并发崩溃
+            .add_system_set_to_stage(
+                CoreStage::Last,
                 SystemSet::new()
                     .with_run_criteria(FixedTimestep::step(1.0))
-                    .with_system(food_spawner.after(snake_movement)),
+                    .with_system(food_spawner),
             )
             // fn 上的 before 等接口属于扩展实现的，方式详见：https://users.rust-lang.org/t/solved-implementing-a-trait-for-function-closure-types/9371
             // 孤儿规则：当你为某类型实现某 trait 的时候，必须要求类型或者 trait 至少有一个是在当前 crate 中定义的。你不能为第三方的类型实现第三方的 trait
@@ -107,7 +111,8 @@ pub mod snake_mod {
                     .with_run_criteria(FixedTimestep::step(0.150))
                     .with_system(snake_movement)
                     .with_system(snake_eating.after(snake_movement))
-                    .with_system(snake_growth.after(snake_eating)),
+                    .with_system(snake_growth.after(snake_eating))
+                    .with_system(update_score_text.after(snake_growth)),
             )
             .add_system(game_over.after(snake_movement))
             .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
@@ -120,6 +125,37 @@ pub mod snake_mod {
 
     fn setup_camera(mut commands: Commands) {
         commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    }
+
+    fn setup_score_text(mut commands: Commands, asset_server: Res<AssetServer>) {
+        commands.spawn_bundle(UiCameraBundle::default());
+        commands
+            .spawn_bundle(TextBundle {
+                style: Style {
+                    align_self: AlignSelf::FlexEnd,
+                    position_type: PositionType::Absolute,
+                    position: Rect {
+                        top: Val::Px(16.0),
+                        left: Val::Px(16.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                text: Text::with_section(
+                    "Score: 0",
+                    TextStyle {
+                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                        font_size: 50.0,
+                        color: Color::rgba(0.8, 0.8, 0.8, 0.3),
+                    },
+                    TextAlignment {
+                        horizontal: HorizontalAlign::Center,
+                        ..default()
+                    },
+                ),
+                ..default()
+            })
+            .insert(ScoreText);
     }
 
     fn spawn_snake(mut commands: Commands, mut segments: ResMut<SnakeSegments>) {
@@ -322,6 +358,14 @@ pub mod snake_mod {
         }
     }
 
+    fn update_score_text(mut query: Query<&mut Text, With<ScoreText>>) {
+        if let Some(mut text) = query.iter_mut().next() {
+            unsafe {
+                text.sections[0].value = format!("Score: {}", SNAKE_SCORE);
+            }
+        }
+    }
+
     fn snake_growth(
         commands: Commands,
         last_tail_position: Res<LastTailPosition>,
@@ -329,7 +373,10 @@ pub mod snake_mod {
         mut growth_reader: EventReader<GrowthEvent>,
     ) {
         if growth_reader.iter().next().is_some() {
-            segments.push(spawn_segment(commands, last_tail_position.0.unwrap()))
+            segments.push(spawn_segment(commands, last_tail_position.0.unwrap()));
+            unsafe {
+                SNAKE_SCORE += 1;
+            }
         }
     }
 
@@ -345,6 +392,9 @@ pub mod snake_mod {
                 commands.entity(entity).despawn();
             }
             spawn_snake(commands, segments_res);
+            unsafe {
+                SNAKE_SCORE = 0;
+            }
         }
     }
 }
