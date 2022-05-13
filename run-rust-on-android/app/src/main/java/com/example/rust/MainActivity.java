@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 
 public class MainActivity extends AppCompatActivity implements JNICallback {
 
@@ -16,7 +17,12 @@ public class MainActivity extends AppCompatActivity implements JNICallback {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        invokeCallbackViaJNI(this);
+        findViewById(R.id.b_rust_hello).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                invokeCallbackViaJNI(MainActivity.this);
+            }
+        });
     }
 
     public static native void invokeCallbackViaJNI(JNICallback callback);
