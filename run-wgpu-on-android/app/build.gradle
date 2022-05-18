@@ -5,7 +5,6 @@ plugins {
 apply plugin: 'org.mozilla.rust-android-gradle.rust-android'
 
 cargo {
-    profile = 'release'
     module  = "src/main/rust"       // Or whatever directory contains your Cargo.toml
     libname = "wgpu_on_app"          // Or whatever matches Cargo.toml's [package] name.
     targets = ["arm", "arm64"]  // See bellow for a longer list of options

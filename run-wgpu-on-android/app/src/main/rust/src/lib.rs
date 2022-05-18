@@ -1,10 +1,19 @@
-mod examples;
-mod wgpu_canvas;
-pub use wgpu_canvas::WgpuCanvas;
+use android_logger::Config;
+use jni::objects::JClass;
+use jni::sys::{jobject};
+use jni::JNIEnv;
+use jni_fn::jni_fn;
+use log::{error, Level};
 
-#[cfg_attr(target_os = "ios", path = "ios.rs")]
-#[cfg_attr(target_os = "android", path = "android.rs", allow(non_snake_case))]
-mod ffi;
+mod app_state; // 得配置，不然 triangle 里面也找不到
+mod triangle;
 
-#[cfg(all(target_os = "android", target_os = "ios"))]
-pub use ffi::*;
+#[no_mangle]
+#[jni_fn("com.example.wgpu.RustBridge")]
+pub unsafe fn startRenderTriangle(env: *mut JNIEnv, _: JClass, surface: jobject) {
+    android_logger::init_once(Config::default().with_min_level(Level::Trace));
+    error!("[LBH] Renderer Launching...");
+    //todo:???
+    triangle::start_render(env as *mut _, surface);
+    error!("[LBH] Renderer Launched");
+}
