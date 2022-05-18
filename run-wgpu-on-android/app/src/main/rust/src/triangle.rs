@@ -114,7 +114,9 @@ pub fn start_render(env: *mut JNIEnv, surface: jobject) -> CanvasHolder {
         render_pass.draw(0..3, 0..1);
     }
 
-    //todo:??
+    //[LBH NOTE]
+    //https://doc.rust-lang.org/stable/std/iter/fn.once.html
+    //便捷的一个功能封装接口而已，就是生成一个数量为1的容器
     state.queue.submit(iter::once(encoder.finish()));
     output.present();
 

@@ -1,7 +1,6 @@
 use jni::sys::{jobject, JNIEnv};
 use log::info;
 use raw_window_handle::{AndroidNdkHandle, HasRawWindowHandle, RawWindowHandle};
-use std::ffi::c_void;
 
 pub struct AppState {
     pub native_window: NativeWindow,
@@ -18,10 +17,12 @@ impl AppState {
         let window = unsafe { NativeWindow::new(window) };
         let instance = wgpu::Instance::new(wgpu::Backends::all());
         let _surface = unsafe { instance.create_surface(&window) };
-        //todo:???
+        // [LBH NOTE]
+        // https://crates.io/crates/pollster
+        // 主要作用就是为了调用异步任务时直接进行等待，直到任务完成
         let (_adapter, _device, _queue) =
             pollster::block_on(request_device(&instance, wgpu::Backends::all(), &_surface));
-        //todo:???
+
         let _config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
@@ -95,8 +96,12 @@ impl NativeWindow {
 unsafe impl HasRawWindowHandle for NativeWindow {
     fn raw_window_handle(&self) -> RawWindowHandle {
         let mut handle = AndroidNdkHandle::empty();
-        //todo:???
-        handle.a_native_window = self.a_native_window as *mut _ as *mut c_void;
+        //[LBH NOTE]
+        //c_void / ffi:
+        //https://blog.51cto.com/u_15127605/2763275
+        //https://nomicon.purewhite.io/ffi.html
+        //https://doc.rust-lang.org/std/ffi/index.html
+        handle.a_native_window = self.a_native_window as *mut _;
         RawWindowHandle::AndroidNdk(handle)
     }
 }
