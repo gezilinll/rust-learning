@@ -19,7 +19,8 @@ impl AppState {
         let _surface = unsafe { instance.create_surface(&window) };
         // [LBH NOTE]
         // https://crates.io/crates/pollster
-        // 主要作用就是为了调用异步任务时直接进行等待，直到任务完成
+        // 主要作用就是为了调用异步任务时直接进行等待，直到任务完成，内部是个loop的逻辑
+        // 因为await的话会要求对应接口声明为 async
         let (_adapter, _device, _queue) =
             pollster::block_on(request_device(&instance, wgpu::Backends::all(), &_surface));
 

@@ -90,11 +90,12 @@ android {
 
 * 配置 Debug Type 为 Dual
 
-* 【图图图】
+  * ![image2022-5-13_17-42-52](https://tva1.sinaimg.cn/large/e6c9d24ely1h2fscx2i6hj207502k3yg.jpg)
+  * ![image2022-5-13_17-47-7](https://tva1.sinaimg.cn/large/e6c9d24ely1h2fsd6bh3uj20q607hmxv.jpg)
 
 * Debug 模式下运行，然后在下方的调试界面的 app 栏目下暂停程序，启动 LLDB 控制台
 
-* 【图图图】
+  * ![image2022-5-13_17-47-7](https://tva1.sinaimg.cn/large/e6c9d24ely1h2fsdfqfruj20q607hmxv.jpg)
 
 * 在控制台输入想要断点的位置，语法详见：[Android调试利器之LLDB](https://blog.csdn.net/wangyiyungw/article/details/81069631) ，这里举例上述示范项目中的 lib.rs 的第 26 行：
 
